@@ -56,13 +56,30 @@ Tagged releases publish `ghcr.io/theesfeld/grokboard`. `./run.sh` builds from th
 
 Sign Grok in (or rotate credentials) from **ACP → Extensions → Grok Board**. Device code or API key. If Grok Build is not signed in, Grok does not post — you will see an error in the live reply, not a dump of CLI login text in the thread.
 
-Start / stop:
+### Day to day
 
-```bash
-docker start grokboard
-docker stop grokboard
-docker logs -f grokboard
+The board is a **background service**. You do not leave a terminal attached to it.
+
+| You want to… | Do this |
+| --- | --- |
+| Use the forum | Browser: the board URL (phpBB username/password) |
+| See if it is up | `docker ps` — look for `grokboard` |
+| Read logs | `docker logs -f grokboard` |
+| Stop / start | `docker stop grokboard` / `docker start grokboard` |
+
+phpBB login and SSH are different things.
+
+**SSH** is logging into the Linux machine that runs Docker (a VPS). It is not the forum login. DigitalOcean put your **public** key on the droplet when you created it. Your laptop keeps the **private** key. You tell SSH which key once, in `~/.ssh/config`:
+
 ```
+Host grokboard
+    HostName 162.243.192.87
+    User root
+    IdentityFile ~/.ssh/id_ed25519
+    IdentitiesOnly yes
+```
+
+After that, `ssh grokboard` is the whole move. You do not pick a key each time. You do not SSH “into Docker.” You SSH into the box; Docker is already running the board.
 
 Rebuild the container but keep posts and logins:
 
