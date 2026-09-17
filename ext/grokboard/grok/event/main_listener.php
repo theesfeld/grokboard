@@ -90,7 +90,7 @@ class main_listener implements EventSubscriberInterface
 			$this->user->add_lang_ext('grokboard/grok', 'common');
 			$this->template->assign_vars([
 				'S_GROKBOARD_NEED_AUTH'	=> true,
-				'U_GROKBOARD_ACP'		=> append_sid($this->phpbb_root_path . 'adm/index.php', 'i=-grokboard-grok-acp-main_module&mode=auth'),
+				'U_GROKBOARD_ACP'		=> $this->grok_acp_url(),
 			]);
 		}
 	}
@@ -98,7 +98,25 @@ class main_listener implements EventSubscriberInterface
 	protected function grok_signed_in()
 	{
 		$stamp = @file_get_contents('/etc/grokboard/auth.status');
-		return is_string($stamp) && preg_match('/^ok\b/m', $stamp);
+		if (is_string($stamp) && preg_match('/^ok\b/m', $stamp))
+		{
+			return true;
+		}
+		$cli = new \grokboard\grok\auth\cli();
+		$st = $cli->status();
+		return !empty($st['authenticated']);
+	}
+
+	protected function grok_acp_url()
+	{
+		$sql = 'SELECT module_id FROM ' . $this->table_prefix . "modules
+			WHERE module_basename = '" . $this->db->sql_escape('\\grokboard\\grok\\acp\\main_module') . "'
+				AND module_mode = 'auth'";
+		$result = $this->db->sql_query_limit($sql, 1);
+		$row = $this->db->sql_fetchrow($result);
+		$this->db->sql_freeresult($result);
+		$i = !empty($row['module_id']) ? (int) $row['module_id'] : '-grokboard-grok-acp-main_module';
+		return append_sid(generate_board_url() . '/adm/index.php', 'i=' . $i . '&mode=auth');
 	}
 
 	public function viewtopic_data($event)

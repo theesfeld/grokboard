@@ -39,7 +39,8 @@ prepare_dirs() {
 	chown "$GROK_USER:www-data" "$DATA/grokbuild/workspace" "$DATA/grokbuild/tmp"
 	chmod 0770 "$DATA/grokbuild/workspace" "$DATA/grokbuild/tmp"
 	chmod 0700 "$DATA/grokbuild/.grok"
-	chmod 0750 "$DATA/grokboard"
+	# 0755 so phpBB (www-data) can read auth.status. Secrets in this dir stay 0600.
+	chmod 0755 "$DATA/grokboard"
 
 	rm -rf /home/grokbuild/.grok /home/grokbuild/workspace /home/grokbuild/tmp
 	ln -s "$DATA/grokbuild/.grok" /home/grokbuild/.grok

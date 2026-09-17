@@ -345,15 +345,9 @@ class stream
 		{
 			return true;
 		}
-		if (is_readable('/etc/grokboard/xai.env'))
-		{
-			$raw = @file_get_contents('/etc/grokboard/xai.env');
-			if (is_string($raw) && preg_match('/^XAI_API_KEY=.+/m', $raw))
-			{
-				return true;
-			}
-		}
-		return is_file('/home/grokbuild/.grok/auth.json') && filesize('/home/grokbuild/.grok/auth.json') > 0;
+		$cli = new \grokboard\grok\auth\cli();
+		$st = $cli->status();
+		return !empty($st['authenticated']);
 	}
 
 	protected function is_auth_failure($text)

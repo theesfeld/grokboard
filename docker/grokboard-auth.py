@@ -45,7 +45,11 @@ def require_root() -> None:
 
 
 def ensure_dirs() -> None:
-    os.makedirs("/etc/grokboard", mode=0o750, exist_ok=True)
+    os.makedirs("/etc/grokboard", mode=0o755, exist_ok=True)
+    try:
+        os.chmod("/etc/grokboard", 0o755)
+    except OSError:
+        pass
     os.makedirs(f"{GROK_HOME}/.grok", mode=0o700, exist_ok=True)
     os.makedirs(STATE_DIR, mode=0o700, exist_ok=True)
     try:

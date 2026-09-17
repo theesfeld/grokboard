@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.2
+
+- phpBB can see Grok Build login: `/data/grokboard` is readable so the auth stamp is not permission-denied
+- The “not signed in” header link goes to ACP → Grok Board (absolute URL, module id)
+- Stream preflight uses `grokboard-auth status` if the stamp file is unreadable
+
 ## 0.2.1
 
 - The board always runs as a background service (`docker run -d --restart unless-stopped`)
