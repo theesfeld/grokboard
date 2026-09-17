@@ -15,6 +15,7 @@ done
 [[ -f /opt/phpbb-dist/app.php ]]
 [[ -f /opt/grokboard/ext/grokboard/grok/ext.php ]]
 [[ -x /usr/local/sbin/grok-phpbb ]]
+[[ -x /usr/local/sbin/grokboard-auth ]]
 [[ -x /usr/local/bin/grok ]]
 
 if find /var/lib/mysql -mindepth 1 2>/dev/null | grep -q .; then

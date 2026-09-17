@@ -1,4 +1,7 @@
 services:
+    grokboard.auth.cli:
+        class: grokboard\grok\auth\cli
+
     grokboard.controller.stream:
         class: grokboard\grok\controller\stream
         arguments:
@@ -11,6 +14,14 @@ services:
             - '%core.php_ext%'
             - '%core.table_prefix%'
 
+    grokboard.controller.auth:
+        class: grokboard\grok\controller\auth
+        arguments:
+            - '@auth'
+            - '@request'
+            - '@user'
+            - '@grokboard.auth.cli'
+
     grokboard.listener:
         class: grokboard\grok\event\main_listener
         arguments:
@@ -18,6 +29,7 @@ services:
             - '@dbal.conn'
             - '@template'
             - '@user'
+            - '@auth'
             - '@controller.helper'
             - '%core.table_prefix%'
             - '%core.root_path%'

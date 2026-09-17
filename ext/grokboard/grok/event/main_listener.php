@@ -10,17 +10,19 @@ class main_listener implements EventSubscriberInterface
 	protected $db;
 	protected $template;
 	protected $user;
+	protected $auth;
 	protected $helper;
 	protected $table_prefix;
 	protected $phpbb_root_path;
 	protected $php_ext;
 
-	public function __construct(\phpbb\config\config $config, \phpbb\db\driver\driver_interface $db, \phpbb\template\template $template, \phpbb\user $user, \phpbb\controller\helper $helper, $table_prefix, $phpbb_root_path, $php_ext)
+	public function __construct(\phpbb\config\config $config, \phpbb\db\driver\driver_interface $db, \phpbb\template\template $template, \phpbb\user $user, \phpbb\auth\auth $auth, \phpbb\controller\helper $helper, $table_prefix, $phpbb_root_path, $php_ext)
 	{
 		$this->config = $config;
 		$this->db = $db;
 		$this->template = $template;
 		$this->user = $user;
+		$this->auth = $auth;
 		$this->helper = $helper;
 		$this->table_prefix = $table_prefix;
 		$this->phpbb_root_path = $phpbb_root_path;
@@ -82,6 +84,21 @@ class main_listener implements EventSubscriberInterface
 			'GROKBOARD_USER_ID'		=> (int) $this->config['grok_user_id'],
 			'U_GROKBOARD_STREAM'		=> $this->helper->route('grokboard_stream', ['hash' => $hash]),
 		]);
+
+		if ($this->auth->acl_get('a_board') && !$this->grok_signed_in())
+		{
+			$this->user->add_lang_ext('grokboard/grok', 'common');
+			$this->template->assign_vars([
+				'S_GROKBOARD_NEED_AUTH'	=> true,
+				'U_GROKBOARD_ACP'		=> append_sid($this->phpbb_root_path . 'adm/index.php', 'i=-grokboard-grok-acp-main_module&mode=auth'),
+			]);
+		}
+	}
+
+	protected function grok_signed_in()
+	{
+		$stamp = @file_get_contents('/etc/grokboard/auth.status');
+		return is_string($stamp) && preg_match('/^ok\b/m', $stamp);
 	}
 
 	public function viewtopic_data($event)

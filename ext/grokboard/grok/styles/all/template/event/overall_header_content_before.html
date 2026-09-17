@@ -1,0 +1,10 @@
+{% if S_GROKBOARD_NEED_AUTH %}
+<div class="rules grokboard-need-auth">
+	<div class="inner">
+		<strong>{{ lang('GROKBOARD_NEED_AUTH') }}</strong>
+		{% if U_GROKBOARD_ACP %}
+			<br /><a href="{{ U_GROKBOARD_ACP }}">{{ lang('GROKBOARD_NEED_AUTH_LINK') }}</a>
+		{% endif %}
+	</div>
+</div>
+{% endif %}

@@ -32,16 +32,9 @@ That script:
 1. Asks which **host port** to publish
 2. Asks whether the board is **this machine only** or reachable on the **LAN**
 3. Prints **firewall** commands for that port
-4. Builds the image
-5. Starts first-run setup in the container
-
-First-run setup asks for:
-
-| Prompt | What it is |
-| --- | --- |
-| phpBB username / password / email | Your board login |
-| Board title | Optional; default `Grok Board` |
-| Grok Build login | Device code (open a URL, enter the code) **or** paste your xAI API key |
+4. Builds the image (or pulls a release image)
+5. Asks for your phpBB username / password / email
+6. Starts the container
 
 Then open:
 
@@ -49,16 +42,17 @@ Then open:
 http://localhost:8080/
 ```
 
-Log in with the phpBB user you just created.
+Log in with the phpBB user you just created. **Sign Grok into Grok Build from ACP → Extensions → Grok Board** (device code on your phone, or paste an API key). You never need `docker exec` for that.
 
 ```bash
 ./run.sh --port 9090
 ./run.sh --port 8080 --bind 0.0.0.0 --hostname 192.168.1.50 --open-firewall
+./run.sh --detach --image ghcr.io/theesfeld/grokboard:0.2.0
 ```
 
 `--open-firewall` runs `ufw` or `firewalld` on the host (needs sudo) to allow that TCP port.
 
-Tagged releases also publish `ghcr.io/theesfeld/grokboard`. `./run.sh` builds from this repo.
+Tagged releases publish `ghcr.io/theesfeld/grokboard`. `./run.sh` builds from this repo unless you pass `--image`.
 
 ---
 
@@ -69,17 +63,14 @@ Tagged releases also publish `ghcr.io/theesfeld/grokboard`. `./run.sh` builds fr
 - A new topic starts a new Grok conversation. Replies in the same topic continue that session.
 - Grok posts in phpBB BBCode with smilies.
 
+Sign Grok in (or rotate credentials) from **ACP → Extensions → Grok Board**. Device code or API key. If Grok Build is not signed in, Grok does not post — you will see an error in the live reply, not a dump of CLI login text in the thread.
+
 Stop with `Ctrl+C`. Start again:
 
 ```bash
 ./run.sh
 # or: docker start -ai grokboard
-```
-
-Sign in to Grok Build again:
-
-```bash
-docker exec -it grokboard grokboard-login
+# detached: docker start grokboard
 ```
 
 Rebuild the container but keep posts and logins:
@@ -136,6 +127,35 @@ This container does **not** terminate TLS. For the public internet, put Caddy/ng
 
 ---
 
+## VPS (Docker only)
+
+The image is the whole board. On a droplet, run the published image and put Caddy in front for HTTPS.
+
+```bash
+docker pull ghcr.io/theesfeld/grokboard:0.2.0
+
+docker run -d --name grokboard --restart unless-stopped \
+  -p 127.0.0.1:8080:80 \
+  -e SERVER_NAME=board.example.com \
+  -e SERVER_PORT=443 \
+  -e SERVER_PROTOCOL=https:// \
+  -e PHPBB_ADMIN_USER=yourname \
+  -e PHPBB_ADMIN_PASSWORD='choose-a-password' \
+  -e PHPBB_ADMIN_EMAIL=you@example.com \
+  -e BOARD_NAME='Grok Board' \
+  -e TZ=UTC \
+  -v grokboard-data:/data \
+  ghcr.io/theesfeld/grokboard:0.2.0
+```
+
+After phpBB finishes installing (watch `docker logs -f grokboard`), recreate the container **without** the password env vars (the volume already has the board). Point host Caddy at `127.0.0.1:8080` with `flush_interval -1` so the live reply stream works. A sample file is `deploy/host-caddyfile`.
+
+Then open the board, log in, and sign Grok in from **ACP → Extensions → Grok Board**.
+
+`SERVER_PORT` / `SERVER_NAME` / `SERVER_PROTOCOL` must match the public URL (443 + https if Caddy terminates TLS), not the published Docker port.
+
+---
+
 ## Manual `docker run`
 
 Same as `./run.sh`. `SERVER_PORT` must match the published host port so phpBB cookies and links are correct.
@@ -146,6 +166,9 @@ docker run -it --name grokboard \
   -p 127.0.0.1:8080:80 \
   -e SERVER_PORT=8080 \
   -e SERVER_NAME=localhost \
+  -e PHPBB_ADMIN_USER=yourname \
+  -e PHPBB_ADMIN_PASSWORD='choose-a-password' \
+  -e PHPBB_ADMIN_EMAIL=you@example.com \
   -v grokboard-data:/data \
   grokboard:local
 ```
@@ -167,9 +190,9 @@ Prefer `./run.sh`.
 | Symptom | What to do |
 | --- | --- |
 | `./run.sh` says install Docker or Podman | Install one of them, then retry |
-| Wizard asks for Grok login every time | Finish device login or paste a key: `docker exec -it grokboard grokboard-login` |
-| Login page loops / wrong host in links | `SERVER_PORT` / `SERVER_NAME` must match how you open the board. Recreate: `./run.sh --reset --port YOURPORT` |
-| Grok never replies | Confirm Grok Build login succeeded. Check `docker logs grokboard` |
+| Grok login error appeared as a forum post | Upgrade to 0.2.0+. Auth failures are not posted. Sign in from ACP → Extensions → Grok Board |
+| Grok never replies / “not signed in” | ACP → Extensions → Grok Board: device code or API key. Check `docker logs grokboard` |
+| Login page loops / wrong host in links | `SERVER_PORT` / `SERVER_NAME` / `SERVER_PROTOCOL` must match how you open the board. Recreate: `./run.sh --reset --port YOURPORT` |
 | Port already in use | `./run.sh --port 9090` |
 | Want a clean board | `./run.sh --reset-data` |
 

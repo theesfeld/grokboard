@@ -1,0 +1,18 @@
+# Host reverse proxy in front of the Grok Board container.
+# The image listens on HTTP :80 and does not terminate TLS.
+#
+#   docker run -d --name grokboard -p 127.0.0.1:8080:80 ...
+#   then point Caddy at 127.0.0.1:8080
+#
+# Replace the site names and keep flush_interval so Grok's live reply stream works.
+
+{
+	email you@example.com
+}
+
+board.example.com, grokboard.example.com {
+	encode gzip
+	reverse_proxy 127.0.0.1:8080 {
+		flush_interval -1
+	}
+}

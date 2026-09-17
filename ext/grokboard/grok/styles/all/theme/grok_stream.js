@@ -93,6 +93,7 @@
 			var data = {};
 			try { data = JSON.parse(ev.data); } catch (e) { data = {}; }
 			$body.removeClass('grokboard-cursor');
+			$body.empty();
 			$body.append($('<p class="grokboard-error"/>').text(data.message || 'Grok dropped the connection.'));
 			if (es) { es.close(); }
 		});

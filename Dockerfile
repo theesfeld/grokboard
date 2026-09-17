@@ -97,6 +97,7 @@ RUN useradd --system --create-home --home-dir /home/grokbuild --shell /usr/sbin/
 	&& printf '%s\n' \
 		'Defaults:www-data !requiretty' \
 		'www-data ALL=(grokbuild) NOPASSWD: /usr/local/sbin/grok-phpbb' \
+		'www-data ALL=(root) NOPASSWD: /usr/local/sbin/grokboard-auth' \
 		>/etc/sudoers.d/grok-phpbb \
 	&& chmod 440 /etc/sudoers.d/grok-phpbb \
 	&& visudo -cf /etc/sudoers.d/grok-phpbb \
@@ -105,6 +106,7 @@ RUN useradd --system --create-home --home-dir /home/grokbuild --shell /usr/sbin/
 COPY deploy/grok-phpbb /usr/local/sbin/grok-phpbb
 COPY docker/entrypoint.sh /usr/local/sbin/entrypoint.sh
 COPY docker/grokboard-login.sh /usr/local/sbin/grokboard-login.sh
+COPY docker/grokboard-auth.py /usr/local/sbin/grokboard-auth
 COPY docker/Caddyfile /etc/caddy/Caddyfile
 COPY docker/mariadb.cnf /etc/mysql/mariadb.conf.d/99-grokboard.cnf
 COPY docker/php-grokboard.ini /etc/php/8.3/fpm/conf.d/99-grokboard.ini
@@ -114,7 +116,7 @@ COPY deploy/setup-board.php /opt/grokboard/deploy/setup-board.php
 COPY docker/grok-home /opt/grokboard/grok-home
 COPY ext /opt/grokboard/ext
 
-RUN chmod 755 /usr/local/sbin/grok-phpbb /usr/local/sbin/entrypoint.sh /usr/local/sbin/grokboard-login.sh /usr/local/sbin/assert-clean.sh \
+RUN chmod 755 /usr/local/sbin/grok-phpbb /usr/local/sbin/entrypoint.sh /usr/local/sbin/grokboard-login.sh /usr/local/sbin/grokboard-auth /usr/local/sbin/assert-clean.sh \
 	&& ln -sf /usr/local/sbin/grokboard-login.sh /usr/local/sbin/grokboard-login \
 	&& printf '\nphp_admin_value[output_buffering] = 0\nphp_admin_flag[zlib.output_compression] = off\nphp_admin_value[max_execution_time] = 3600\nrequest_terminate_timeout = 3600\n' \
 		>>/etc/php/8.3/fpm/pool.d/www.conf \

@@ -82,7 +82,20 @@ class stream
 
 		$full = '';
 		$session_id = '';
-		$error = $this->run_grok_cli((int) $queue['topic_id'], (int) $queue['forum_id'], (int) $queue['post_id'], $full, $session_id);
+		if (!$this->grok_signed_in())
+		{
+			$error = $this->user->lang('GROKBOARD_AUTH_ERROR') ?: 'Grok Build is not signed in. An administrator can authenticate from ACP → Extensions → Grok Board.';
+		}
+		else
+		{
+			$error = $this->run_grok_cli((int) $queue['topic_id'], (int) $queue['forum_id'], (int) $queue['post_id'], $full, $session_id);
+		}
+
+		if ($this->is_auth_failure($full . "\n" . $error))
+		{
+			$full = '';
+			$error = $this->user->lang('GROKBOARD_AUTH_ERROR') ?: 'Grok Build is not signed in. An administrator can authenticate from ACP → Extensions → Grok Board.';
+		}
 
 		if ($error !== '' || trim($full) === '')
 		{
@@ -265,6 +278,12 @@ class stream
 					if ($type === 'text' && isset($ev['data']) && $ev['data'] !== '')
 					{
 						$full .= $ev['data'];
+						if ($this->is_auth_failure($full))
+						{
+							$err .= $full . "\n";
+							$full = '';
+							break 3;
+						}
 						$this->sse('token', ['t' => $ev['data']]);
 					}
 					else if ($type === 'tool_call')
@@ -301,11 +320,49 @@ class stream
 		$code = proc_close($proc);
 		@unlink($prompt_file);
 
+		if ($this->is_auth_failure($full . "\n" . $err))
+		{
+			$full = '';
+			return 'Grok Build is not signed in. An administrator can authenticate from ACP → Extensions → Grok Board.';
+		}
+
 		if (trim($full) === '')
 		{
 			return trim($err) !== '' ? trim($err) : ('grok -p exit ' . $code);
 		}
+		if ($code !== 0 && $this->is_auth_failure($err))
+		{
+			$full = '';
+			return trim($err);
+		}
 		return '';
+	}
+
+	protected function grok_signed_in()
+	{
+		$stamp = @file_get_contents('/etc/grokboard/auth.status');
+		if (is_string($stamp) && preg_match('/^ok\b/m', $stamp))
+		{
+			return true;
+		}
+		if (is_readable('/etc/grokboard/xai.env'))
+		{
+			$raw = @file_get_contents('/etc/grokboard/xai.env');
+			if (is_string($raw) && preg_match('/^XAI_API_KEY=.+/m', $raw))
+			{
+				return true;
+			}
+		}
+		return is_file('/home/grokbuild/.grok/auth.json') && filesize('/home/grokbuild/.grok/auth.json') > 0;
+	}
+
+	protected function is_auth_failure($text)
+	{
+		if ($text === '' || $text === null)
+		{
+			return false;
+		}
+		return (bool) preg_match('/not signed in|XAI_API_KEY|grok login --device|authentication required|unauthoriz(?:e|ed)/i', $text);
 	}
 
 	protected function workspace_path($forum_id, $topic_id)

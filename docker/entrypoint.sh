@@ -137,9 +137,25 @@ load_runtime() {
 save_runtime() {
 	umask 022
 	{
-		declare -p SERVER_NAME SERVER_PORT BOARD_NAME PHPBB_ADMIN_USER 2>/dev/null || true
+		declare -p SERVER_NAME SERVER_PORT SERVER_PROTOCOL BOARD_NAME PHPBB_ADMIN_USER 2>/dev/null || true
 	} >"$DATA/grokboard/runtime.env"
 	chmod 0644 "$DATA/grokboard/runtime.env"
+}
+
+apply_protocol() {
+	SERVER_PROTOCOL=${SERVER_PROTOCOL:-http://}
+	case "$SERVER_PROTOCOL" in
+		http://|https://) ;;
+		http) SERVER_PROTOCOL=http:// ;;
+		https) SERVER_PROTOCOL=https:// ;;
+		*) die "SERVER_PROTOCOL must be http:// or https://" ;;
+	esac
+	if [[ "$SERVER_PROTOCOL" == "https://" ]]; then
+		COOKIE_SECURE=true
+	else
+		COOKIE_SECURE=false
+	fi
+	export SERVER_PROTOCOL COOKIE_SECURE
 }
 
 install_grok_cli() {
@@ -171,9 +187,10 @@ collect_setup() {
 	prompt_value PHPBB_ADMIN_EMAIL "Email"
 	prompt_value BOARD_NAME "Board title" "${BOARD_NAME:-Grok Board}"
 	prompt_value SERVER_NAME "Hostname others will type in the browser" "${SERVER_NAME:-localhost}"
-	prompt_value SERVER_PORT "Public port (must match the host port you published)" "${SERVER_PORT:-8080}"
+	prompt_value SERVER_PORT "Public port (must match the public URL; 443 if HTTPS is terminated in front)" "${SERVER_PORT:-8080}"
 	[[ "$SERVER_PORT" =~ ^[0-9]+$ ]] || die "SERVER_PORT must be numeric"
-	export PHPBB_ADMIN_USER PHPBB_ADMIN_PASSWORD PHPBB_ADMIN_EMAIL BOARD_NAME SERVER_NAME SERVER_PORT
+	apply_protocol
+	export PHPBB_ADMIN_USER PHPBB_ADMIN_PASSWORD PHPBB_ADMIN_EMAIL BOARD_NAME SERVER_NAME SERVER_PORT SERVER_PROTOCOL COOKIE_SECURE
 	export ADMIN_EMAIL="$PHPBB_ADMIN_EMAIL"
 	export BOARD_EMAIL="$PHPBB_ADMIN_EMAIL"
 	export BOARD_CONTACT="$PHPBB_ADMIN_EMAIL"
@@ -272,8 +289,8 @@ installer:
         smtp_user: ~
         smtp_pass: ~
     server:
-        cookie_secure: false
-        server_protocol: http://
+        cookie_secure: ${COOKIE_SECURE:-false}
+        server_protocol: $(q "${SERVER_PROTOCOL:-http://}")
         force_server_vars: true
         server_name: $(q "$SERVER_NAME")
         server_port: ${SERVER_PORT}
@@ -311,6 +328,9 @@ refresh_extension() {
 	rm -rf "$DATA/phpbb/ext/grokboard/grok"
 	cp -a /opt/grokboard/ext/grokboard/grok "$DATA/phpbb/ext/grokboard/grok"
 	chown -R www-data:www-data "$DATA/phpbb/ext/grokboard"
+	# Drop compiled templates so ACP/board events from the image are used.
+	rm -rf "$DATA/phpbb/cache/twig" "$DATA/phpbb/cache/production"
+	find "$DATA/phpbb/cache" -maxdepth 1 -type f -name '*.php' -delete 2>/dev/null || true
 }
 
 enable_extension() {
@@ -361,6 +381,7 @@ esac
 
 prepare_dirs
 load_runtime
+apply_protocol
 warn_if_ephemeral
 ensure_grok_cli
 
@@ -381,21 +402,26 @@ if [[ "$first_run" -eq 1 ]]; then
 	refresh_extension
 	enable_extension
 	setup_board
-	/usr/local/sbin/grokboard-login.sh required
 	save_runtime
 	log "Setup complete."
-	log "Open http://${SERVER_NAME}:${SERVER_PORT}/ and log in as ${PHPBB_ADMIN_USER}"
+	if [[ "$SERVER_PROTOCOL" == "https://" ]]; then
+		log "Open ${SERVER_PROTOCOL}${SERVER_NAME}/ and log in as ${PHPBB_ADMIN_USER}"
+	else
+		log "Open ${SERVER_PROTOCOL}${SERVER_NAME}:${SERVER_PORT}/ and log in as ${PHPBB_ADMIN_USER}"
+	fi
 	log "Grok is a separate board user and does not use your admin password."
+	log "Sign Grok into Grok Build from phpBB ACP → Extensions → Grok Board (device code or API key). No docker exec."
 	if [[ "${SERVER_NAME}" != "localhost" && "${SERVER_NAME}" != "127.0.0.1" ]]; then
 		log "If this host has a firewall, allow TCP port ${SERVER_PORT} inbound (see README)."
 	fi
 else
 	refresh_extension
 	enable_extension
-	if ! have_grok_auth; then
-		log "Grok Build is not authenticated yet."
-		/usr/local/sbin/grokboard-login.sh required
-	fi
+fi
+
+/usr/local/sbin/grokboard-auth status >/dev/null || true
+if ! have_grok_auth; then
+	log "Grok Build is not signed in. ACP → Extensions → Grok Board."
 fi
 
 start_services

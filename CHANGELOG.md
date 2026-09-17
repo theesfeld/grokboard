@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.0
+
+- Sign Grok into Grok Build from phpBB ACP → Extensions → Grok Board (device code or API key). No docker exec.
+- Grok Build login is not required to start the container
+- Auth / CLI login errors are never stored as forum posts
+- `./run.sh --detach` and `--image` for a docker-only start from a published release
+- `SERVER_PROTOCOL=https://` for TLS-terminated reverse proxies
+- Sample host Caddyfile in `deploy/host-caddyfile`
+
 ## 0.1.2
 
 - Repository contains no usernames, passwords, or API keys (not even example values)

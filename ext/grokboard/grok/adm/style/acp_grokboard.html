@@ -1,0 +1,174 @@
+{% INCLUDE 'overall_header.html' %}
+
+<h1>{{ lang('ACP_GROKBOARD') }}</h1>
+<p>{{ lang('ACP_GROKBOARD_EXPLAIN') }}</p>
+<p><em>{{ lang('ACP_GROKBOARD_NEVER_THREAD') }}</em></p>
+
+{% if GROK_NOTICE %}
+<div class="successbox">
+	<p>{{ GROK_NOTICE }}</p>
+</div>
+{% endif %}
+{% if GROK_ERROR %}
+<div class="errorbox">
+	<p>{{ GROK_ERROR }}</p>
+</div>
+{% endif %}
+
+<form id="acp_grokboard" method="post" action="{{ U_ACTION }}">
+	<fieldset>
+		<legend>{{ lang('ACP_GROKBOARD_STATUS') }}</legend>
+		<dl>
+			<dt><label>{{ lang('ACP_GROKBOARD_STATUS') }}</label></dt>
+			<dd id="grok-auth-state">
+				{% if S_GROK_AUTHENTICATED %}
+					<strong>{{ lang('ACP_GROKBOARD_SIGNED_IN') }}</strong>
+				{% else %}
+					<strong>{{ lang('ACP_GROKBOARD_NOT_SIGNED_IN') }}</strong>
+				{% endif %}
+			</dd>
+		</dl>
+		<dl>
+			<dt><label>{{ lang('ACP_GROKBOARD_METHOD') }}</label></dt>
+			<dd id="grok-auth-method">{{ GROK_AUTH_METHOD }}</dd>
+		</dl>
+		<dl>
+			<dt><label>{{ lang('ACP_GROKBOARD_ACCOUNT') }}</label></dt>
+			<dd id="grok-auth-email">{{ GROK_AUTH_EMAIL }}</dd>
+		</dl>
+		{% if S_GROK_AUTHENTICATED %}
+		<p class="submit-buttons">
+			<input class="button2" type="submit" name="clear" value="{{ lang('ACP_GROKBOARD_CLEAR') }}" onclick="return confirm('{{ lang('ACP_GROKBOARD_CLEAR_CONFIRM')|e('js') }}');" />
+		</p>
+		{% endif %}
+	</fieldset>
+
+	<fieldset>
+		<legend>{{ lang('ACP_GROKBOARD_DEVICE') }}</legend>
+		<p>{{ lang('ACP_GROKBOARD_DEVICE_EXPLAIN') }}</p>
+		<div id="grok-device-panel" {% if GROK_DEVICE_STATUS != 'pending' %}style="display:none"{% endif %}>
+			<dl>
+				<dt><label>{{ lang('ACP_GROKBOARD_OPEN_URL') }}</label></dt>
+				<dd><a id="grok-device-url" href="{{ GROK_DEVICE_URL }}" target="_blank" rel="noopener">{{ GROK_DEVICE_URL }}</a></dd>
+			</dl>
+			<dl>
+				<dt><label>{{ lang('ACP_GROKBOARD_ENTER_CODE') }}</label></dt>
+				<dd><code id="grok-device-code" style="font-size:1.8em;letter-spacing:0.12em">{{ GROK_DEVICE_CODE }}</code></dd>
+			</dl>
+			<p id="grok-device-wait">{{ lang('ACP_GROKBOARD_WAITING') }}</p>
+		</div>
+		<p class="submit-buttons">
+			<input class="button1" type="submit" name="start_device" id="grok-start-device" value="{{ lang('ACP_GROKBOARD_START_DEVICE') }}" />
+			<input class="button2" type="submit" name="cancel_device" id="grok-cancel-device" value="{{ lang('ACP_GROKBOARD_CANCEL_DEVICE') }}" />
+		</p>
+	</fieldset>
+
+	<fieldset>
+		<legend>{{ lang('ACP_GROKBOARD_KEY') }}</legend>
+		<p>{{ lang('ACP_GROKBOARD_KEY_EXPLAIN') }}</p>
+		<dl>
+			<dt><label for="api_key">{{ lang('ACP_GROKBOARD_KEY') }}</label></dt>
+			<dd><input type="password" id="api_key" name="api_key" size="48" autocomplete="off" /></dd>
+		</dl>
+		<p class="submit-buttons">
+			<input class="button1" type="submit" name="save_key" value="{{ lang('ACP_GROKBOARD_SAVE_KEY') }}" />
+		</p>
+	</fieldset>
+
+	{{ S_FORM_TOKEN }}
+</form>
+
+<div id="grokboard-auth-config" hidden
+	data-url="{{ U_GROKBOARD_AUTH }}"
+	data-pending="{{ GROK_DEVICE_STATUS }}"
+	data-waiting="{{ L_ACP_GROKBOARD_WAITING }}"
+	data-signedin="{{ L_ACP_GROKBOARD_SIGNED_IN }}"
+	data-failed="{{ L_ACP_GROKBOARD_AUTH_FAILED }}"></div>
+
+<script>
+(function () {
+	var cfg = document.getElementById('grokboard-auth-config');
+	if (!cfg) { return; }
+	var base = cfg.getAttribute('data-url');
+	var waiting = cfg.getAttribute('data-waiting');
+	var signedIn = cfg.getAttribute('data-signedin');
+	var failed = cfg.getAttribute('data-failed');
+	var timer = null;
+
+	function $(id) { return document.getElementById(id); }
+
+	function qs(action) {
+		return base + (base.indexOf('?') >= 0 ? '&' : '?') + 'action=' + encodeURIComponent(action);
+	}
+
+	function showDevice(url, code) {
+		$('grok-device-panel').style.display = (url || code) ? '' : 'none';
+		$('grok-device-url').href = url || '#';
+		$('grok-device-url').textContent = url || '';
+		$('grok-device-code').textContent = code || '';
+	}
+
+	function applyStatus(data) {
+		if (!data) { return; }
+		if (data.authenticated) {
+			$('grok-auth-state').innerHTML = '<strong>' + signedIn + '</strong>';
+			$('grok-auth-method').textContent = data.method === 'api_key' ? 'API key' : (data.method === 'device' ? 'Device code (Grok Build account)' : data.method || '');
+			$('grok-auth-email').textContent = data.email || '';
+			showDevice('', '');
+			$('grok-device-wait').textContent = signedIn;
+			if (timer) { window.clearInterval(timer); timer = null; }
+			return;
+		}
+		if (data.status === 'pending') {
+			showDevice(data.verification_url, data.user_code);
+			$('grok-device-wait').textContent = waiting;
+		} else if (data.status === 'failed') {
+			$('grok-device-wait').textContent = data.error || failed;
+			if (timer) { window.clearInterval(timer); timer = null; }
+		}
+	}
+
+	function poll() {
+		var req = new XMLHttpRequest();
+		req.open('GET', qs('device_status'), true);
+		req.onload = function () {
+			try { applyStatus(JSON.parse(req.responseText)); } catch (e) {}
+		};
+		req.send();
+	}
+
+	function post(action) {
+		var req = new XMLHttpRequest();
+		req.open('POST', qs(action), true);
+		req.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+		req.onload = function () {
+			var data = {};
+			try { data = JSON.parse(req.responseText); } catch (e) { data = { error: failed }; }
+			applyStatus(data);
+			if (data.status === 'pending' && !timer) {
+				timer = window.setInterval(poll, 2000);
+			}
+		};
+		req.send('action=' + encodeURIComponent(action));
+		return false;
+	}
+
+	$('grok-start-device').addEventListener('click', function (ev) {
+		ev.preventDefault();
+		$('grok-device-wait').textContent = waiting;
+		$('grok-device-panel').style.display = '';
+		post('start_device');
+	});
+	$('grok-cancel-device').addEventListener('click', function (ev) {
+		ev.preventDefault();
+		post('cancel_device');
+	});
+
+	if (cfg.getAttribute('data-pending') === 'pending') {
+		timer = window.setInterval(poll, 2000);
+		poll();
+	}
+})();
+</script>
+
+{% INCLUDE 'overall_footer.html' %}

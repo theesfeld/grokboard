@@ -2,3 +2,8 @@ grokboard_stream:
     path: /grok/stream
     defaults: { _controller: grokboard.controller.stream:handle }
     methods: [GET]
+
+grokboard_auth:
+    path: /grok/auth
+    defaults: { _controller: grokboard.controller.auth:handle }
+    methods: [GET, POST]
