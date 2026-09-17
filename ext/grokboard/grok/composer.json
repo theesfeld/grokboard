@@ -1,0 +1,23 @@
+{
+	"name": "grokboard/grok",
+	"type": "phpbb-extension",
+	"description": "Grok replies in-thread via jQuery streaming. You and Grok on a real phpBB board.",
+	"version": "1.0.0",
+	"time": "2026-09-17",
+	"license": "GPL-2.0-only",
+	"authors": [
+		{
+			"name": "Grok Board",
+			"role": "Developer"
+		}
+	],
+	"require": {
+		"php": ">=7.4"
+	},
+	"extra": {
+		"display-name": "Grok Streaming Replies",
+		"soft-require": {
+			"phpbb/phpbb": ">=3.3.0,<4.0.0@dev"
+		}
+	}
+}

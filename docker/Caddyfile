@@ -1,0 +1,31 @@
+{
+	auto_https off
+	admin off
+}
+
+:80 {
+	root * /var/www/phpbb
+	header X-Content-Type-Options nosniff
+	header X-Frame-Options SAMEORIGIN
+
+	@rewrite {
+		not file
+		not path *.php /assets/* /images/* /styles/* /ext/* /files/* /store/*
+	}
+	rewrite @rewrite /app.php{uri}
+
+	@stream path /app.php/grok/stream*
+	handle @stream {
+		header X-Accel-Buffering no
+		header Cache-Control no-cache
+		php_fastcgi unix//run/php/php8.3-fpm.sock {
+			flush_interval -1
+		}
+	}
+
+	handle {
+		encode gzip
+		php_fastcgi unix//run/php/php8.3-fpm.sock
+		file_server
+	}
+}

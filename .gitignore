@@ -1,0 +1,9 @@
+.env
+.env.*
+auth.json
+oauth.json
+secrets.env
+xai.env
+*.zip
+*.tar.bz2
+.DS_Store

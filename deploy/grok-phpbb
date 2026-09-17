@@ -1,0 +1,22 @@
+#!/bin/bash
+# Run Grok Build headless for a phpBB topic. First arg is workspace cwd.
+set -euo pipefail
+export HOME=/home/grokbuild
+export PATH="/usr/local/bin:/home/grokbuild/.grok/bin:/usr/bin:/bin"
+if [[ -f /etc/grokboard/xai.env ]]; then
+	set -a
+	# shellcheck disable=SC1091
+	source /etc/grokboard/xai.env
+	set +a
+fi
+WORKSPACE=${1:?workspace}
+shift
+mkdir -p "$WORKSPACE"
+if [[ -f /opt/grokboard/grok-home/AGENTS.md && ! -f "$WORKSPACE/AGENTS.md" ]]; then
+	cp /opt/grokboard/grok-home/AGENTS.md "$WORKSPACE/AGENTS.md"
+	chmod 0644 "$WORKSPACE/AGENTS.md" || true
+fi
+cd "$WORKSPACE"
+exec grok --yolo --no-auto-update --output-format streaming-json --cwd "$WORKSPACE" \
+	--rules "You are Grok posting on a phpBB board. Use phpBB BBCode and smilies only, never Markdown. Do not mention the CLI, Docker, or that you are streaming." \
+	"$@"

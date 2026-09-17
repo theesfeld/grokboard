@@ -1,0 +1,4 @@
+grokboard_stream:
+    path: /grok/stream
+    defaults: { _controller: grokboard.controller.stream:handle }
+    methods: [GET]

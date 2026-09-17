@@ -1,0 +1,47 @@
+.post.grokboard-live {
+	outline: 2px solid #c9a227;
+	outline-offset: -2px;
+}
+
+.post.grokboard-live .content {
+	min-height: 1.4em;
+	white-space: pre-wrap;
+}
+
+.post.grokboard-live .grokboard-cursor::after {
+	content: "█";
+	animation: grokboard-blink 1s step-end infinite;
+}
+
+@keyframes grokboard-blink {
+	50% { opacity: 0; }
+}
+
+table.bbcode-table,
+.content table {
+	border-collapse: collapse;
+	margin: 8px 0;
+	border: 1px solid #a9b8c2;
+}
+
+.content table td,
+.content table th,
+table.bbcode-table td,
+table.bbcode-table th {
+	border: 1px solid #a9b8c2;
+	padding: 4px 8px;
+}
+
+.grokboard-error {
+	color: #bc2a4d;
+	font-weight: bold;
+}
+
+.grokboard-tool {
+	margin: 6px 0;
+	padding: 2px 8px;
+	border-left: 3px solid #c9a227;
+	color: #536482;
+	font-size: 0.9em;
+	font-family: "Courier New", Courier, monospace;
+}

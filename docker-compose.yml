@@ -1,0 +1,19 @@
+services:
+  grokboard:
+    build: .
+    image: grokboard:local
+    ports:
+      - "${BIND_ADDR:-127.0.0.1}:${SERVER_PORT:-8080}:80"
+    volumes:
+      - grokboard-data:/data
+    stdin_open: true
+    tty: true
+    environment:
+      TZ: ${TZ:-UTC}
+      SERVER_NAME: ${SERVER_NAME:-localhost}
+      SERVER_PORT: ${SERVER_PORT:-8080}
+      BOARD_NAME: ${BOARD_NAME:-Grok Board}
+    restart: unless-stopped
+
+volumes:
+  grokboard-data:

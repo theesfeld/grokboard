@@ -1,0 +1,13 @@
+# Whitelist only files the image needs. Everything else — including
+# env files, keys, and host auth — stays out of the build context.
+*
+
+!ext/
+!ext/**
+
+!deploy/
+!deploy/grok-phpbb
+!deploy/setup-board.php
+
+!docker/
+!docker/**

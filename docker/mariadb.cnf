@@ -1,0 +1,13 @@
+[mysqld]
+skip-networking = 1
+skip-name-resolve
+datadir = /data/mysql
+socket = /run/mysqld/mysqld.sock
+pid-file = /run/mysqld/mysqld.pid
+character-set-server = utf8mb4
+collation-server = utf8mb4_unicode_ci
+innodb_buffer_pool_size = 128M
+
+[client]
+socket = /run/mysqld/mysqld.sock
+default-character-set = utf8mb4

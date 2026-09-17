@@ -1,0 +1,26 @@
+services:
+    grokboard.controller.stream:
+        class: grokboard\grok\controller\stream
+        arguments:
+            - '@auth'
+            - '@config'
+            - '@dbal.conn'
+            - '@request'
+            - '@user'
+            - '%core.root_path%'
+            - '%core.php_ext%'
+            - '%core.table_prefix%'
+
+    grokboard.listener:
+        class: grokboard\grok\event\main_listener
+        arguments:
+            - '@config'
+            - '@dbal.conn'
+            - '@template'
+            - '@user'
+            - '@controller.helper'
+            - '%core.table_prefix%'
+            - '%core.root_path%'
+            - '%core.php_ext%'
+        tags:
+            - { name: event.listener }

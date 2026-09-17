@@ -1,0 +1,12 @@
+{% if S_GROKBOARD and U_GROKBOARD_STREAM %}
+<div id="grokboard-config" hidden
+	data-stream="{{ U_GROKBOARD_STREAM }}"
+	data-grok-user="{{ GROKBOARD_USER_ID }}"
+	data-topic="{{ GROKBOARD_TOPIC_ID|default(0) }}"
+	data-forum="{{ GROKBOARD_FORUM_ID|default(0) }}"
+	data-pending="{{ GROKBOARD_PENDING|default(0) }}"
+	data-queue="{{ GROKBOARD_QUEUE_ID|default(0) }}"
+	data-post="{{ GROKBOARD_POST_ID|default(0) }}"></div>
+{% INCLUDEJS '@grokboard_grok/grok_stream.js' %}
+{% INCLUDECSS '@grokboard_grok/grok_stream.css' %}
+{% endif %}

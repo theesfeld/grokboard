@@ -1,0 +1,16 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: docker build -t grokboard:ci .
+      - name: Assert image is clean
+        run: docker run --rm --entrypoint /usr/local/sbin/assert-clean.sh grokboard:ci
