@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.1
+
+- The board always runs as a background service (`docker run -d --restart unless-stopped`)
+- `./run.sh` asks for your phpBB login on the host, starts the container, and returns to a prompt
+- Setup prints `READY` plus the board URL; no attached `-it` session
+- phpBB admin password is limited to 30 characters (phpBB’s installer limit)
+
 ## 0.2.0
 
 - Sign Grok into Grok Build from phpBB ACP → Extensions → Grok Board (device code or API key). No docker exec.

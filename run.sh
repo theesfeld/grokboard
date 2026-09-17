@@ -14,14 +14,14 @@ Usage: ./run.sh [options]
   --hostname NAME      Hostname/IP you will type in the browser
   --https              phpBB URLs/cookies are HTTPS (TLS terminated in front)
   --image NAME         Image to run (default: grokboard:local, built here)
-  --detach, -d         Run in the background (docker-only; no attached shell)
   --open-firewall      Try to allow PORT/tcp via ufw or firewalld (needs root)
   --reset              Delete the named container (data volume is kept)
   --reset-data         Also delete the grokboard-data volume (destroys the board)
   -h, --help           Show this help
 
-First start asks for your phpBB username/password. Sign Grok into Grok Build
-from phpBB ACP → Extensions → Grok Board (device code or API key).
+Asks for your phpBB login, then starts the board in the background
+(docker run -d --restart unless-stopped). Sign Grok in from ACP →
+Extensions → Grok Board.
 EOF
 }
 
@@ -31,7 +31,6 @@ HOSTNAME_OPT=${SERVER_NAME:-}
 OPEN_FW=0
 RESET=0
 RESET_DATA=0
-DETACH=0
 HTTPS=0
 IMAGE=${GROKBOARD_IMAGE:-grokboard:local}
 
@@ -42,7 +41,7 @@ while [[ $# -gt 0 ]]; do
 		--hostname) HOSTNAME_OPT=${2:?}; shift 2 ;;
 		--image) IMAGE=${2:?}; shift 2 ;;
 		--https) HTTPS=1; shift ;;
-		--detach|-d) DETACH=1; shift ;;
+		--detach|-d) shift ;; # always detached; kept so old docs still work
 		--open-firewall) OPEN_FW=1; shift ;;
 		--reset) RESET=1; shift ;;
 		--reset-data) RESET=1; RESET_DATA=1; shift ;;
@@ -78,7 +77,7 @@ ask() {
 echo
 echo "Grok Board"
 echo "No accounts or keys are in the image. You will create your phpBB login."
-echo "Grok Build is signed in later from the ACP — no docker exec."
+echo "The board runs in the background. Grok Build is signed in later from the ACP."
 echo "Press Enter to accept a default."
 echo
 
@@ -175,16 +174,27 @@ else
 	$ENGINE pull "$IMAGE" || true
 fi
 
-if $ENGINE inspect "$NAME" >/dev/null 2>&1; then
-	echo "Container $NAME already exists. Starting it (setup wizard only runs on first create)."
-	echo "To pick a new port, re-run: ./run.sh --reset --port $PORT"
-	if [[ "$DETACH" -eq 1 ]]; then
-		$ENGINE start "$NAME"
-		echo "Running in the background. Logs: $ENGINE logs -f $NAME"
-		echo "Sign Grok in from ACP → Extensions → Grok Board."
-		exit 0
+print_running() {
+	local url
+	if [[ "$PROTOCOL" == "https://" ]]; then
+		url="${PROTOCOL}${HOSTNAME_OPT}/"
+	else
+		url="${PROTOCOL}${HOSTNAME_OPT}:${PORT}/"
 	fi
-	exec $ENGINE start -ai "$NAME"
+	echo
+	echo "Grok Board is running in the background."
+	echo "  URL:    $url"
+	echo "  Logs:   $ENGINE logs -f $NAME"
+	echo "  Stop:   $ENGINE stop $NAME"
+	echo "Log in, then sign Grok in from ACP → Extensions → Grok Board."
+}
+
+if $ENGINE inspect "$NAME" >/dev/null 2>&1; then
+	echo "Container $NAME already exists. Starting it (setup only runs on first create)."
+	echo "To pick a new port, re-run: ./run.sh --reset --port $PORT"
+	$ENGINE start "$NAME" >/dev/null || true
+	print_running
+	exit 0
 fi
 
 ask PHPBB_ADMIN_USER "phpBB username"
@@ -195,11 +205,11 @@ if [[ -z "${PHPBB_ADMIN_PASSWORD:-}" ]]; then
 		echo
 		read -r -s -p "Confirm password: " confirm
 		echo
-		if [[ "$PHPBB_ADMIN_PASSWORD" == "$confirm" && ${#PHPBB_ADMIN_PASSWORD} -ge 6 ]]; then
+		if [[ "$PHPBB_ADMIN_PASSWORD" == "$confirm" && ${#PHPBB_ADMIN_PASSWORD} -ge 6 && ${#PHPBB_ADMIN_PASSWORD} -le 30 ]]; then
 			unset confirm
 			break
 		fi
-		echo "Passwords must match and be at least 6 characters." >&2
+		echo "Passwords must match and be 6–30 characters (phpBB’s limit)." >&2
 	done
 fi
 ask PHPBB_ADMIN_EMAIL "Email"
@@ -221,15 +231,6 @@ RUN_FLAGS=(run --name "$NAME"
 unset PHPBB_ADMIN_PASSWORD
 
 echo
-echo "Starting. Sign Grok into Grok Build from ACP → Extensions → Grok Board after you log in."
-if [[ "$DETACH" -eq 1 ]]; then
-	$ENGINE "${RUN_FLAGS[@]}" -d --restart unless-stopped "$IMAGE"
-	echo "Running in the background. Logs: $ENGINE logs -f $NAME"
-	if [[ "$PROTOCOL" == "https://" ]]; then
-		echo "Board URL (behind your TLS proxy): ${PROTOCOL}${HOSTNAME_OPT}/"
-	else
-		echo "Board URL: ${PROTOCOL}${HOSTNAME_OPT}:${PORT}/"
-	fi
-	exit 0
-fi
-exec $ENGINE "${RUN_FLAGS[@]}" -it "$IMAGE"
+echo "Starting the board as a service…"
+$ENGINE "${RUN_FLAGS[@]}" -d --restart unless-stopped "$IMAGE"
+print_running

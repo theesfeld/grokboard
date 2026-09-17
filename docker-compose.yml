@@ -6,14 +6,15 @@ services:
       - "${BIND_ADDR:-127.0.0.1}:${SERVER_PORT:-8080}:80"
     volumes:
       - grokboard-data:/data
-    stdin_open: true
-    tty: true
     environment:
       TZ: ${TZ:-UTC}
       SERVER_NAME: ${SERVER_NAME:-localhost}
       SERVER_PORT: ${SERVER_PORT:-8080}
       SERVER_PROTOCOL: ${SERVER_PROTOCOL:-http://}
       BOARD_NAME: ${BOARD_NAME:-Grok Board}
+      PHPBB_ADMIN_USER: ${PHPBB_ADMIN_USER:-}
+      PHPBB_ADMIN_PASSWORD: ${PHPBB_ADMIN_PASSWORD:-}
+      PHPBB_ADMIN_EMAIL: ${PHPBB_ADMIN_EMAIL:-}
     restart: unless-stopped
 
 volumes:

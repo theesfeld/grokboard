@@ -67,7 +67,7 @@ if [[ -z "$choice" ]]; then
 			*) choice=device ;;
 		esac
 	else
-		die "Grok Build login is required. Prefer phpBB ACP → Extensions → Grok Board. Or run with -it, or set XAI_API_KEY / GROK_LOGIN=device."
+		die "Grok Build login is required. Prefer phpBB ACP → Extensions → Grok Board, or set XAI_API_KEY."
 	fi
 fi
 

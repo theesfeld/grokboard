@@ -90,7 +90,7 @@ prompt_value() {
 		return
 	fi
 	if [[ ! -t 0 ]]; then
-		[[ -n "$def" ]] || die "Missing $var. Set it in the environment or run with -it for the setup wizard."
+		[[ -n "$def" ]] || die "Missing $var. Set PHPBB_ADMIN_USER / PHPBB_ADMIN_PASSWORD / PHPBB_ADMIN_EMAIL (or use ./run.sh)."
 		printf -v "$var" '%s' "$def"
 		return
 	fi
@@ -110,19 +110,19 @@ prompt_password() {
 	if [[ -n "${!var:-}" ]]; then
 		return
 	fi
-	[[ -t 0 ]] || die "Missing $var. Set PHPBB_ADMIN_PASSWORD or run with -it."
+	[[ -t 0 ]] || die "Missing $var. Set PHPBB_ADMIN_USER / PHPBB_ADMIN_PASSWORD / PHPBB_ADMIN_EMAIL (or use ./run.sh)."
 	local a b
 	while true; do
 		read -r -s -p "$msg: " a
 		echo
 		read -r -s -p "Confirm password: " b
 		echo
-		if [[ "$a" == "$b" && ${#a} -ge 6 ]]; then
+		if [[ "$a" == "$b" && ${#a} -ge 6 && ${#a} -le 30 ]]; then
 			printf -v "$var" '%s' "$a"
 			unset a b
 			return
 		fi
-		echo "Passwords must match and be at least 6 characters." >&2
+		echo "Passwords must match and be 6–30 characters (phpBB’s limit)." >&2
 	done
 }
 
@@ -158,6 +158,17 @@ apply_protocol() {
 	export SERVER_PROTOCOL COOKIE_SECURE
 }
 
+board_url() {
+	local proto=${SERVER_PROTOCOL:-http://}
+	local host=${SERVER_NAME:-localhost}
+	local port=${SERVER_PORT:-8080}
+	if [[ "$proto" == "https://" && "$port" == "443" ]] || [[ "$proto" == "http://" && "$port" == "80" ]]; then
+		BOARD_URL="${proto}${host}/"
+	else
+		BOARD_URL="${proto}${host}:${port}/"
+	fi
+}
+
 install_grok_cli() {
 	log "Pulling and installing Grok Build CLI."
 	curl -fsSL https://x.ai/cli/install.sh | GROK_INSTALL_DIR=/usr/local/bin bash
@@ -190,6 +201,9 @@ collect_setup() {
 	prompt_value SERVER_PORT "Public port (must match the public URL; 443 if HTTPS is terminated in front)" "${SERVER_PORT:-8080}"
 	[[ "$SERVER_PORT" =~ ^[0-9]+$ ]] || die "SERVER_PORT must be numeric"
 	apply_protocol
+	if [[ ${#PHPBB_ADMIN_PASSWORD} -lt 6 || ${#PHPBB_ADMIN_PASSWORD} -gt 30 ]]; then
+		die "phpBB passwords must be 6–30 characters"
+	fi
 	export PHPBB_ADMIN_USER PHPBB_ADMIN_PASSWORD PHPBB_ADMIN_EMAIL BOARD_NAME SERVER_NAME SERVER_PORT SERVER_PROTOCOL COOKIE_SECURE
 	export ADMIN_EMAIL="$PHPBB_ADMIN_EMAIL"
 	export BOARD_EMAIL="$PHPBB_ADMIN_EMAIL"
@@ -425,8 +439,12 @@ if ! have_grok_auth; then
 fi
 
 start_services
-log "Grok Board is listening inside the container on port 80 (published as host port ${SERVER_PORT:-8080})."
-log "Board URL: http://${SERVER_NAME:-localhost}:${SERVER_PORT:-8080}/"
+board_url
+log "READY. Grok Board is running in the background as this container."
+log "Open ${BOARD_URL}"
+if [[ "$first_run" -eq 1 && -n "${PHPBB_ADMIN_USER:-}" ]]; then
+	log "Log in as ${PHPBB_ADMIN_USER}. Sign Grok in from ACP → Extensions → Grok Board."
+fi
 
 wait -n
 status=$?

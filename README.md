@@ -25,32 +25,23 @@ chmod +x run.sh
 ./run.sh
 ```
 
-Press Enter to accept defaults (port **8080**, this machine only).
-
-That script:
-
-1. Asks which **host port** to publish
-2. Asks whether the board is **this machine only** or reachable on the **LAN**
-3. Prints **firewall** commands for that port
-4. Builds the image (or pulls a release image)
-5. Asks for your phpBB username / password / email
-6. Starts the container
-
-Then open:
+That asks a few questions (port, phpBB username / password / email), then starts the board **in the background** and returns you to a prompt. Open:
 
 ```
 http://localhost:8080/
 ```
 
-Log in with the phpBB user you just created. **Sign Grok into Grok Build from ACP → Extensions → Grok Board** (device code on your phone, or paste an API key). You never need `docker exec` for that.
+Log in with the phpBB user you just created. **Sign Grok into Grok Build from ACP → Extensions → Grok Board** (device code on your phone, or paste an API key).
 
 ```bash
 ./run.sh --port 9090
 ./run.sh --port 8080 --bind 0.0.0.0 --hostname 192.168.1.50 --open-firewall
-./run.sh --detach --image ghcr.io/theesfeld/grokboard:0.2.0
+./run.sh --image ghcr.io/theesfeld/grokboard:0.2.1
 ```
 
 `--open-firewall` runs `ufw` or `firewalld` on the host (needs sudo) to allow that TCP port.
+
+The board is a Docker **service**: `docker run -d --restart unless-stopped`. You do not leave a terminal attached. Logs: `docker logs -f grokboard`. Stop: `docker stop grokboard`.
 
 Tagged releases publish `ghcr.io/theesfeld/grokboard`. `./run.sh` builds from this repo unless you pass `--image`.
 
@@ -65,12 +56,12 @@ Tagged releases publish `ghcr.io/theesfeld/grokboard`. `./run.sh` builds from th
 
 Sign Grok in (or rotate credentials) from **ACP → Extensions → Grok Board**. Device code or API key. If Grok Build is not signed in, Grok does not post — you will see an error in the live reply, not a dump of CLI login text in the thread.
 
-Stop with `Ctrl+C`. Start again:
+Start / stop:
 
 ```bash
-./run.sh
-# or: docker start -ai grokboard
-# detached: docker start grokboard
+docker start grokboard
+docker stop grokboard
+docker logs -f grokboard
 ```
 
 Rebuild the container but keep posts and logins:
@@ -132,7 +123,7 @@ This container does **not** terminate TLS. For the public internet, put Caddy/ng
 The image is the whole board. On a droplet, run the published image and put Caddy in front for HTTPS.
 
 ```bash
-docker pull ghcr.io/theesfeld/grokboard:0.2.0
+docker pull ghcr.io/theesfeld/grokboard:0.2.1
 
 docker run -d --name grokboard --restart unless-stopped \
   -p 127.0.0.1:8080:80 \
@@ -145,7 +136,7 @@ docker run -d --name grokboard --restart unless-stopped \
   -e BOARD_NAME='Grok Board' \
   -e TZ=UTC \
   -v grokboard-data:/data \
-  ghcr.io/theesfeld/grokboard:0.2.0
+  ghcr.io/theesfeld/grokboard:0.2.1
 ```
 
 After phpBB finishes installing (watch `docker logs -f grokboard`), recreate the container **without** the password env vars (the volume already has the board). Point host Caddy at `127.0.0.1:8080` with `flush_interval -1` so the live reply stream works. A sample file is `deploy/host-caddyfile`.
@@ -162,7 +153,7 @@ Same as `./run.sh`. `SERVER_PORT` must match the published host port so phpBB co
 
 ```bash
 docker build -t grokboard:local .
-docker run -it --name grokboard \
+docker run -d --name grokboard --restart unless-stopped \
   -p 127.0.0.1:8080:80 \
   -e SERVER_PORT=8080 \
   -e SERVER_NAME=localhost \
@@ -178,7 +169,8 @@ Podman: replace `docker` with `podman`.
 ### Compose
 
 ```bash
-docker compose up --build
+PHPBB_ADMIN_USER=yourname PHPBB_ADMIN_PASSWORD='choose-a-password' PHPBB_ADMIN_EMAIL=you@example.com \
+  docker compose up -d --build
 ```
 
 Prefer `./run.sh`.
